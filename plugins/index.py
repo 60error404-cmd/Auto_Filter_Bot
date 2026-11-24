@@ -5,7 +5,7 @@ import asyncio
 from pyrogram import Client, filters, enums
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid, ChatAdminRequired, UsernameInvalid, UsernameNotModified, ChannelPrivate
 from pyrogram.errors import FloodWait, MessageNotModified
-from info import ADMINS, INDEX_REQ_CHANNEL as LOG_CHANNEL
+from info import ADMINS, BIN_CHANNEL, INDEX_REQ_CHANNEL as LOG_CHANNEL
 from database.ia_filterdb import save_file
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils import temp, get_readable_time
@@ -108,6 +108,30 @@ async def send_for_index(client, message):
                            f'#IndexRequest\n\nBy : {message.from_user.mention} (<code>{message.from_user.id}</code>)\nChat ID/ Username - <code> {chat_id}</code>\nLast Message ID - <code>{last_msg_id}</code>\nInviteLink - {link}',
                            reply_markup=reply_markup)
     await message.reply('Thank you for the contribution, wait for our moderators to verify the files.')
+
+
+@Client.on_message(filters.command("backfill_bin") & filters.user(ADMINS))
+async def backfill_bin_channel(client, message):
+    """Index existing media messages from the configured BIN_CHANNEL."""
+    if not BIN_CHANNEL or BIN_CHANNEL == -100:
+        return await message.reply("❌ Please configure BIN_CHANNEL with your database channel ID first.")
+    try:
+        latest_message = None
+        async for item in client.get_chat_history(BIN_CHANNEL, limit=1):
+            latest_message = item
+            break
+        if not latest_message:
+            return await message.reply("❌ The database channel is empty or I cannot read its history.")
+        status = await message.reply(
+            f"Starting database-channel backfill.\n"
+            f"Channel: <code>{BIN_CHANNEL}</code>\n"
+            f"Latest message: <code>{latest_message.id}</code>\n"
+            f"Starting from message: <code>{temp.CURRENT + 1}</code>"
+        )
+        await index_files_to_db(latest_message.id, BIN_CHANNEL, status, client)
+    except Exception as e:
+        logger.exception("Database channel backfill failed")
+        await message.reply(f"❌ Could not start backfill: <code>{e}</code>")
 
 
 @Client.on_message(filters.command('setskip') & filters.user(ADMINS))
