@@ -6,7 +6,7 @@ from collections import defaultdict
 from plugins.Dreamxfutures.Imdbposter import get_movie_detailsx, fetch_image, get_movie_details
 from database.users_chats_db import db
 from pyrogram import Client, filters, enums
-from info import CHANNELS, MOVIE_UPDATE_CHANNEL, LINK_PREVIEW, ABOVE_PREVIEW, BAD_WORDS, LANDSCAPE_POSTER, TMDB_POSTER
+from info import CHANNELS, BIN_CHANNEL, MOVIE_UPDATE_CHANNEL, LINK_PREVIEW, ABOVE_PREVIEW, BAD_WORDS, LANDSCAPE_POSTER, TMDB_POSTER
 from Script import script
 from database.ia_filterdb import save_file
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
@@ -242,7 +242,10 @@ def extract_media_info(filename: str, caption: str):
     }
 
 
-@Client.on_message(filters.chat(CHANNELS) & MEDIA_FILTER)
+# Index uploads from configured source channels and the main database/bin channel.
+INDEX_CHANNELS = list(dict.fromkeys(CHANNELS + [BIN_CHANNEL]))
+
+@Client.on_message(filters.chat(INDEX_CHANNELS) & MEDIA_FILTER)
 async def media_handler(client, message):
     media = next(
         (getattr(message, ft) for ft in ("document", "video", "audio")
